@@ -18,8 +18,21 @@ import boto3
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 import gc
+import logging
+from datetime import datetime
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(f'benchmark-{datetime.now().strftime("%Y%m%d-%H%M%S")}.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 class SystemMonitor:
     def __init__(self):
@@ -165,21 +178,23 @@ class ComprehensiveBenchmark:
     
     def scrape_url(self, url, session, use_premium=False):
         """Scrape single URL with error handling"""
+        start_time = time.time()
         try:
-            # Simulate premium proxy behavior
+            # Much faster delays for testing
             if use_premium:
                 # Premium proxies are faster and more reliable
-                delay = random.uniform(0.05, 0.15)  # Much faster
+                delay = random.uniform(0.01, 0.03)  # Very fast
                 success_rate = 0.95  # Higher success rate
             else:
-                # Local scraping with natural delays
-                delay = random.uniform(0.3, 0.8)  # Slower, more cautious
+                # Local scraping - still fast for testing
+                delay = random.uniform(0.02, 0.05)  # Faster for testing
                 success_rate = 0.88  # Lower success rate due to rate limiting
             
             time.sleep(delay)
             
             # Simulate success/failure based on realistic rates
             if random.random() > success_rate:
+                logger.debug(f"Failed (simulated): {url}")
                 return {
                     'url': url,
                     'status': 'failed',
@@ -189,11 +204,13 @@ class ComprehensiveBenchmark:
                 }
             
             # For demo, simulate successful response
-            response_time = delay + random.uniform(0.02, 0.1)
+            response_time = time.time() - start_time
             response_size = random.randint(15000, 45000)  # Typical page size
             
             # Simulate actual scraping work
             products_found = random.randint(8, 25)
+            
+            logger.debug(f"Success: {url} ({response_time:.3f}s)")
             
             return {
                 'url': url,
@@ -205,6 +222,7 @@ class ComprehensiveBenchmark:
             }
             
         except Exception as e:
+            logger.error(f"Error scraping {url}: {e}")
             return {
                 'url': url,
                 'status': 'failed',
@@ -218,7 +236,7 @@ class ComprehensiveBenchmark:
         session = self.create_session(use_premium)
         results = []
         
-        print(f"Worker {worker_id} starting {len(urls)} URLs ({'Premium AWS' if use_premium else 'Local'})")
+        logger.info(f"Worker {worker_id} starting {len(urls)} URLs ({'Premium AWS' if use_premium else 'Local'})")
         
         for i, url in enumerate(urls):
             result = self.scrape_url(url, session, use_premium)
@@ -231,10 +249,10 @@ class ComprehensiveBenchmark:
             # Progress reporting
             if (i + 1) % 50 == 0:
                 successful = len([r for r in results if r['status'] == 'success'])
-                print(f"  Worker {worker_id}: {i+1}/{len(urls)} ({successful} successful)")
+                logger.info(f"Worker {worker_id}: {i+1}/{len(urls)} ({successful} successful)")
         
         successful = len([r for r in results if r['status'] == 'success'])
-        print(f"Worker {worker_id} completed: {successful}/{len(urls)} successful")
+        logger.info(f"Worker {worker_id} completed: {successful}/{len(urls)} successful")
         
         return results
     
@@ -475,22 +493,107 @@ class ComprehensiveBenchmark:
         
         print("=" * 80)
 
+def generate_test_urls(count=1200):
+    """Generate test URLs from scraping-friendly practice sites"""
+    print(f"Generating {count} test URLs from scraping practice sites...")
+    
+    urls = []
+    
+    # books.toscrape.com - Fake bookstore for scraping (50 pages, 1000 books)
+    for page in range(1, 51):
+        urls.append(f'http://books.toscrape.com/catalogue/page-{page}.html')
+    
+    # Individual book pages
+    for i in range(1, 1001):
+        # Books have URLs like: catalogue/category/books_1/index.html
+        urls.append(f'http://books.toscrape.com/catalogue/book_{i}/index.html')
+    
+    # quotes.toscrape.com - Quotes for scraping practice
+    for page in range(1, 11):
+        urls.append(f'http://quotes.toscrape.com/page/{page}/')
+    
+    # With different formats
+    for page in range(1, 11):
+        urls.append(f'http://quotes.toscrape.com/scroll/page/{page}/')
+        urls.append(f'http://quotes.toscrape.com/js/page/{page}/')
+        urls.append(f'http://quotes.toscrape.com/tableful/page/{page}/')
+    
+    # webscraper.io test sites - Multiple categories
+    test_sites = [
+        'computers/laptops',
+        'computers/tablets', 
+        'phones/touch',
+        'phones/touch/asus',
+        'phones/touch/htc',
+        'phones/touch/lenovo',
+        'phones/touch/lg',
+        'phones/touch/nokia',
+        'phones/touch/samsung',
+        'phones/touch/sony'
+    ]
+    
+    for site in test_sites:
+        for page in range(1, 10):
+            urls.append(f'https://webscraper.io/test-sites/e-commerce/allinone/{site}?page={page}')
+            urls.append(f'https://webscraper.io/test-sites/e-commerce/more/{site}?page={page}')
+            urls.append(f'https://webscraper.io/test-sites/e-commerce/scroll/{site}')
+    
+    # scrapethissite.com - Multiple datasets
+    # Countries
+    for page in range(1, 11):
+        urls.append(f'https://scrapethissite.com/pages/simple/?page={page}')
+    
+    # Hockey teams
+    for year in range(1990, 2016):
+        urls.append(f'https://scrapethissite.com/pages/forms/?per_page=100&page_num=1&year={year}')
+    
+    # Oscar winning films
+    for year in range(2010, 2016):
+        urls.append(f'https://scrapethissite.com/pages/ajax-javascript/?ajax=true&year={year}')
+    
+    # Add more variations to reach target count - SIMPLIFIED
+    logger.info(f"Filling remaining URLs to reach {count}...")
+    base_count = len(urls)
+    while len(urls) < count:
+        # Simple cycling through existing URLs with timestamp parameter
+        idx = len(urls) - base_count
+        base_url = urls[idx % base_count]
+        urls.append(f"{base_url}&_t={idx}")
+    
+    urls = urls[:count]
+    
+    logger.info(f"Generated {len(urls)} URLs from scraping-friendly sites")
+    logger.info("  - books.toscrape.com (practice bookstore)")
+    logger.info("  - quotes.toscrape.com (quotes collection)")
+    logger.info("  - webscraper.io (test e-commerce sites)")
+    logger.info("  - scrapethissite.com (various datasets)")
+    
+    return urls
+
 def main():
     """Run comprehensive local vs premium AWS comparison"""
     benchmark = ComprehensiveBenchmark()
     
-    # Load test URLs
+    # Load or generate test URLs
     try:
         with open('url_cache.json', 'r') as f:
             all_urls = json.load(f)
         
         # Use exactly 1200 URLs
         test_urls = all_urls[:1200]
-        print(f"Loaded {len(test_urls)} URLs for comprehensive testing")
+        print(f"Loaded {len(test_urls)} URLs from cache")
         
     except FileNotFoundError:
-        print("ERROR: url_cache.json not found. Run smart-large-benchmark.py first to generate URLs.")
-        return
+        print("url_cache.json not found. Generating URLs...")
+        test_urls = generate_test_urls(1200)
+        
+        # Save generated URLs for future use
+        try:
+            with open('url_cache.json', 'w') as f:
+                json.dump(test_urls, f, indent=2)
+            print(f"Saved {len(test_urls)} URLs to url_cache.json")
+        except Exception as e:
+            print(f"Warning: Could not save URL cache: {e}")
     
     print("COMPREHENSIVE BENCHMARK: LOCAL vs PREMIUM AWS")
     print("Testing 1200 URLs with full system monitoring")

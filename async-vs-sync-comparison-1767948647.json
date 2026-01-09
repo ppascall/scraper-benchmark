@@ -1,0 +1,47 @@
+{
+  "timestamp": 1767948647.0697856,
+  "test_config": {
+    "num_urls": 1000,
+    "sync_workers": 10,
+    "async_concurrency": 50
+  },
+  "sync_results": {
+    "method": "Sync (Threading)",
+    "total_time": 2.1036133766174316,
+    "total_urls": 1000,
+    "successful": 891,
+    "failed": 109,
+    "success_rate": 89.1,
+    "urls_per_second": 423.5569187303373,
+    "avg_response_time": 0.020286900962375766,
+    "system_stats": {
+      "cpu_avg": 57.43333333333334,
+      "cpu_max": 68.1,
+      "cpu_min": 47.1,
+      "memory_avg_gb": 6.4790395100911455,
+      "memory_max_gb": 6.49530029296875,
+      "memory_min_gb": 6.467430114746094,
+      "sample_count": 3
+    }
+  },
+  "async_results": {
+    "method": "Async (asyncio)",
+    "total_time": 0.5163717269897461,
+    "total_urls": 1000,
+    "successful": 909,
+    "failed": 91,
+    "success_rate": 90.9,
+    "urls_per_second": 1760.3597418067984,
+    "avg_response_time": 0.022203380387477226,
+    "system_stats": {
+      "cpu_avg": 83.5,
+      "cpu_max": 83.5,
+      "cpu_min": 83.5,
+      "memory_avg_gb": 6.444679260253906,
+      "memory_max_gb": 6.444679260253906,
+      "memory_min_gb": 6.444679260253906,
+      "sample_count": 1
+    }
+  },
+  "speedup": 4.073835314107359
+}
